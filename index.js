@@ -1,7 +1,6 @@
 const core = require("@actions/core");
 const { getKeys } = require("./gpg");
 const { createGitHubClient } = require("./github");
-const MockDate = require("mockdate");
 
 function getExpiredIssueTitle(email) {
   return `blackbox key has expired: ${email}`;
@@ -60,6 +59,5 @@ async function run() {
 }
 
 (async function () {
-  MockDate.set("2020-02-04");
   await run();
 })();
