@@ -12,7 +12,6 @@ function getExpiringIssueTitle(email) {
 
 async function findOrCreateIssuesForKeys(githubClient, keys) {
   const issues = await githubClient.getIssues();
-  console.log(keys, issues);
 
   const expiredKeys = keys.filter(k => k.status === "expired");
   await Promise.all(
@@ -33,7 +32,7 @@ async function findOrCreateIssuesForKeys(githubClient, keys) {
   
   const expiringKeys = keys.filter(k => k.status === "expiring");
   await Promise.all(
-    expiredKeys.map(key => {
+    expiringKeys.map(key => {
       const expiringTitle = getExpiringIssueTitle(key.email);
       const expiringIssue = issues.find(issue => issue.title === expiringTitle);
 
