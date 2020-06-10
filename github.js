@@ -5,7 +5,7 @@ function createGitHubClient(token, repo) {
 
   return {
     getIssues: async function() {
-      const { respository } = await octokit.graphql(
+      const data = await octokit.graphql(
         `query openIssues($repo: String!) {
           repository(owner: "BrownUniversity", name: $repo) {
             issues(first: 10, states: OPEN) {
@@ -20,8 +20,9 @@ function createGitHubClient(token, repo) {
         }`,
         { repo: repo.substr(repo.indexOf("/") + 1) }
       );
+      console.log(data);
       return {
-        issues: repository.issues.edges.map(e => e.node)
+        issues: data.repository.issues.edges.map(e => e.node)
       };
     },
     createIssue: async function(title) {
