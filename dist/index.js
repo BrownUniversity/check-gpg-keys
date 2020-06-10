@@ -416,8 +416,9 @@ async function findOrCreateIssuesForKeys(githubClient, keys) {
   await Promise.all(
     expiredKeys.map(key => {
       const expiredTitle = getExpiredIssueTitle(key.email);
+      const expiringTitle = getExpiringIssueTitle(key.email);
       const expiredIssue = issues.find(issue => issue.title === expiredTitle);
-      const expiringIssue = issues.find(issue => issue.title === getExpiringIssueTitle(key.email));
+      const expiringIssue = issues.find(issue => issue.title === expiringTitle);
 
       if (expiredIssue) return null;
 
