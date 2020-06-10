@@ -2,7 +2,7 @@ const core = require("@actions/core");
 const github = require("@actions/github");
 
 function getKeys(keyringDir) {
-  return Promise.resolve([
+  return [
     {
       status: "valid",
       email: "sumner_warren@brown.edu"
@@ -15,7 +15,7 @@ function getKeys(keyringDir) {
       status: "expired",
       email: "sumner_warren@brown.edu"
     }
-  ]);
+  ];
 }
 
 async function getRepoData(octokit, repo) {
@@ -41,6 +41,7 @@ async function getRepoData(octokit, repo) {
     }`,
     { repo: repo.substr(repo.indexOf("/") + 1) }
   );
+  console.log(data);
   return {
     users: data.repository.assignableUsers,
     issues: data.repository.issues
@@ -58,7 +59,7 @@ async function run() {
   const octokit = github.getOctokit(token);
   const keys = await getKeys(keyringDir);
   const { users, issues } = await getRepoData(octokit, repo);
-  await findOrCreateIssue(keys);
+  await findOrCreateIssue({ keys, users, issues });
 }
 
 try {
