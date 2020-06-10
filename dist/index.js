@@ -531,7 +531,7 @@ function createGitHubClient(token, repo) {
         { repo: repo.substr(repo.indexOf("/") + 1) }
       );
       return {
-        repoId: ata.repository.id,
+        repoId: data.repository.id,
         issues: data.repository.issues.edges.map(e => e.node)
       };
     },
