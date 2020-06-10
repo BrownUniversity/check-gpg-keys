@@ -449,6 +449,7 @@ async function run() {
     const repoName = core.getInput("repo-name");
     const keyringDir = core.getInput("keyring-directory");
 
+    connsole.log(createGitHubClient);
     await findOrCreateIssuesForKeys(
       createGitHubClient(githubToken, repoName),
       await getKeys(keyringDir)
@@ -534,9 +535,11 @@ function createGitHubClient(token, repo) {
         issues: data.repository.issues.edges.map(e => e.node)
       };
     },
+
     createIssue: async function(title) {
       console.log(`new issue: ${title}`);
     },
+
     updateIssueTitle: async function(issue, title) {
       console.log(`update issue ${issue.id}: ${title}`);
     }
