@@ -4,7 +4,7 @@ const { getKeys } = require("./gpg");
 
 jest.mock("gpg", () => {
   return {
-    call: jest.fn((stdin, args, cb) => cb(null, "")),
+    call: jest.fn((_, __, cb) => cb(null, "")),
   };
 });
 
