@@ -103,6 +103,79 @@ module.exports = osName;
 
 /***/ }),
 
+/***/ 5:
+/***/ (function(module, __unusedexports, __webpack_require__) {
+
+const core = __webpack_require__(470);
+const { getKeys } = __webpack_require__(880);
+const { createGitHubClient } = __webpack_require__(126);
+
+function getExpiredIssueTitle(email) {
+  return `blackbox key has expired: ${email}`;
+}
+
+function getExpiringIssueTitle(email) {
+  return `blackbox key expiring soon: ${email}`;
+}
+
+async function findOrCreateIssuesForKeys(githubClient, keys) {
+  const { repoId, issues } = await githubClient.getRepoData();
+
+  const expiredKeys = keys.filter((k) => k.status === "expired");
+  await Promise.all(
+    expiredKeys.map((key) => {
+      const expiredTitle = getExpiredIssueTitle(key.email);
+      const expiringTitle = getExpiringIssueTitle(key.email);
+      const expiredIssue = issues.find((issue) => issue.title === expiredTitle);
+      const expiringIssue = issues.find(
+        (issue) => issue.title === expiringTitle
+      );
+
+      if (expiredIssue) return null;
+
+      if (expiringIssue) {
+        return githubClient.updateIssueTitle(expiringIssue.id, expiredTitle);
+      }
+
+      return githubClient.createIssue({ repoId, title: expiredTitle });
+    })
+  );
+
+  const expiringKeys = keys.filter((k) => k.status === "expiring");
+  await Promise.all(
+    expiringKeys.map((key) => {
+      const expiringTitle = getExpiringIssueTitle(key.email);
+      const expiringIssue = issues.find(
+        (issue) => issue.title === expiringTitle
+      );
+
+      if (expiringIssue) return null;
+
+      return githubClient.createIssue({ repoId, title: expiringTitle });
+    })
+  );
+}
+
+async function run() {
+  try {
+    const githubToken = core.getInput("github-token");
+    const repoName = core.getInput("repo-name");
+    const keyringDir = core.getInput("keyring-directory");
+
+    await findOrCreateIssuesForKeys(
+      createGitHubClient(githubToken, repoName),
+      await getKeys(keyringDir)
+    );
+  } catch (e) {
+    core.setFailed(e.message);
+  }
+}
+
+module.exports = { run };
+
+
+/***/ }),
+
 /***/ 9:
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
@@ -397,70 +470,7 @@ module.exports = require("os");
 /***/ 104:
 /***/ (function(__unusedmodule, __unusedexports, __webpack_require__) {
 
-const core = __webpack_require__(470);
-const { getKeys } = __webpack_require__(880);
-const { createGitHubClient } = __webpack_require__(126);
-
-function getExpiredIssueTitle(email) {
-  return `blackbox key has expired: ${email}`;
-}
-
-function getExpiringIssueTitle(email) {
-  return `blackbox key expiring soon: ${email}`;
-}
-
-async function findOrCreateIssuesForKeys(githubClient, keys) {
-  const { repoId, issues } = await githubClient.getRepoData();
-
-  const expiredKeys = keys.filter((k) => k.status === "expired");
-  await Promise.all(
-    expiredKeys.map((key) => {
-      const expiredTitle = getExpiredIssueTitle(key.email);
-      const expiringTitle = getExpiringIssueTitle(key.email);
-      const expiredIssue = issues.find((issue) => issue.title === expiredTitle);
-      const expiringIssue = issues.find(
-        (issue) => issue.title === expiringTitle
-      );
-
-      if (expiredIssue) return null;
-
-      if (expiringIssue) {
-        return githubClient.updateIssueTitle(expiringIssue, expiredTitle);
-      }
-
-      return githubClient.createIssue({ repoId, title: expiredTitle });
-    })
-  );
-
-  const expiringKeys = keys.filter((k) => k.status === "expiring");
-  await Promise.all(
-    expiringKeys.map((key) => {
-      const expiringTitle = getExpiringIssueTitle(key.email);
-      const expiringIssue = issues.find(
-        (issue) => issue.title === expiringTitle
-      );
-
-      if (expiringIssue) return null;
-
-      return githubClient.createIssue({ repoId, title: expiringTitle });
-    })
-  );
-}
-
-async function run() {
-  try {
-    const githubToken = core.getInput("github-token");
-    const repoName = core.getInput("repo-name");
-    const keyringDir = core.getInput("keyring-directory");
-
-    await findOrCreateIssuesForKeys(
-      createGitHubClient(githubToken, repoName),
-      await getKeys(keyringDir)
-    );
-  } catch (e) {
-    core.setFailed(e.message);
-  }
-}
+const { run } = __webpack_require__(5);
 
 (async function main() {
   await run();
@@ -555,7 +565,7 @@ function createGitHubClient(token, repo) {
       return data.createIssue.issue.number;
     },
 
-    async updateIssueTitle(issue, title) {
+    async updateIssueTitle(issueId, title) {
       const data = await octokit.graphql(
         `mutation UpdateIssueTitle($issueId: ID!, $title: String!) {
           updateIssue(input: { id: $issueId, title: $title }) {
@@ -565,7 +575,7 @@ function createGitHubClient(token, repo) {
             }
           }
         }`,
-        { issueId: issue.id, title }
+        { issueId, title }
       );
       return data.updateIssue.issue.number;
     },
@@ -9926,7 +9936,6 @@ async function getKeys(keyringDir) {
 }
 
 module.exports = {
-  parseKeys,
   getKeys,
 };
 

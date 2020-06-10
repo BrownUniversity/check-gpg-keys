@@ -1,8 +1,15 @@
 const MockDate = require("mockdate");
-const { parseKeys } = require("./gpg");
+const gpg = require("gpg");
+const { getKeys } = require("./gpg");
 
-describe("parseKeys", () => {
-  it("determines accurate status", () => {
+jest.mock("gpg", () => {
+  return {
+    call: jest.fn((stdin, args, cb) => cb(null, "")),
+  };
+});
+
+describe("getKeys", () => {
+  it("determines accurate status for gpg keys", async () => {
     MockDate.set("2020-06-10");
     const gpgOutput = `/Users/jcarberr/repo/.blackbox/pubring.kbx
 --------------------------------------------------
@@ -18,10 +25,17 @@ sub   rsa2048 2018-11-05 [E] [expires: 2020-11-04]
 pub   rsa2048 2018-02-06 [SC] [expires: 2020-06-14]
       3C00A27F095896C990C5377E8DCB9594891EAE25
 uid           [ expired] Lois Carberry <lois_carberry@brown.edu>`;
-    expect(parseKeys(gpgOutput)).toEqual([
+    gpg.call.mockImplementationOnce((_, __, cb) => cb(null, gpgOutput));
+    expect(await getKeys(".blackbox")).toEqual([
       { email: "josiah_carberry@brown.edu", status: "expired" },
       { email: "laura_carberry@brown.edu", status: "valid" },
       { email: "lois_carberry@brown.edu", status: "expiring" },
     ]);
+    expect(gpg.call).toHaveBeenCalledTimes(1);
+    expect(gpg.call).toHaveBeenCalledWith(
+      "",
+      ["--homedir=.blackbox", "--list-keys"],
+      expect.any(Function)
+    );
   });
 });

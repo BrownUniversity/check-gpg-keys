@@ -70,6 +70,5 @@ async function getKeys(keyringDir) {
 }
 
 module.exports = {
-  parseKeys,
   getKeys,
 };
