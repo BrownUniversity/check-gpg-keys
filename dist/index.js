@@ -423,7 +423,7 @@ async function findOrCreateIssuesForKeys(githubClient, keys) {
       if (expiredIssue) return null;
 
       if (expiringIssue) {
-        return githubClient.updateIssueTitle(expiringIssue, expiringTitle);
+        return githubClient.updateIssueTitle(expiringIssue, expiredTitle);
       }
 
       return githubClient.createIssue({ repoId, title: expiredTitle });
@@ -552,7 +552,6 @@ function createGitHubClient(token, repo) {
     },
 
     updateIssueTitle: async function(issue, title) {
-      console.log(`update issue ${issue.id}: ${title}`);
       const data = await octokit.graphql(
         `mutation UpdateIssueTitle($issueId: ID!, $title: String!) {
           updateIssue(input: { id: $issueId, title: $title }) {
@@ -564,7 +563,6 @@ function createGitHubClient(token, repo) {
         }`,
         { issueId: issue.id, title }
       );
-      console.log(data);
       return data.updateIssue.issue.number;
     }
   }
