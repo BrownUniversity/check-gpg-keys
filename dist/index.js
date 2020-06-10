@@ -419,8 +419,7 @@ function getKeys(keyringDir) {
 
 async function getRepoData(octokit, repo) {
   const data = await octokit.graphql(
-    `
-      {
+    `query usersAndIssues($repo: String!) {
         repository(owner: "BrownUniversity", name: $repo) {
           assignableUsers(first: 50) {
             edges {
