@@ -48,7 +48,7 @@ function listKeys(homedir) {
       if (err) {
         return reject(err);
       }
-      return resolve(result);
+      return resolve(result.toString());
     });
   });
 }
