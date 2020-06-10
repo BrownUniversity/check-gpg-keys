@@ -33,4 +33,6 @@ function createGitHubClient(token, repo) {
   }
 }
 
-module.exports = createGitHubClient;
+module.exports = {
+  createGitHubClient
+};

@@ -1,6 +1,6 @@
 const core = require("@actions/core");
 const { getKeys } = require("./gpg");
-const github = require("./github");
+const { createGitHubClient } = require("./github");
 
 function getExpiredIssueTitle(email) {
   return `blackbox key has expired: ${email}`;

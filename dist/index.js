@@ -399,7 +399,7 @@ module.exports = require("os");
 
 const core = __webpack_require__(470);
 const { getKeys } = __webpack_require__(880);
-const github = __webpack_require__(126);
+const { createGitHubClient } = __webpack_require__(126);
 
 function getExpiredIssueTitle(email) {
   return `blackbox key has expired: ${email}`;
@@ -542,7 +542,9 @@ function createGitHubClient(token, repo) {
   }
 }
 
-module.exports = createGitHubClient;
+module.exports = {
+  createGitHubClient
+};
 
 
 /***/ }),
