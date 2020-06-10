@@ -50,7 +50,7 @@ async function run() {
     const repoName = core.getInput("repo-name");
     const keyringDir = core.getInput("keyring-directory");
 
-    connsole.log(createGitHubClient);
+    console.log(createGitHubClient);
     await findOrCreateIssuesForKeys(
       createGitHubClient(githubToken, repoName),
       await getKeys(keyringDir)
