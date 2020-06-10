@@ -439,7 +439,7 @@ async function getRepoData(octokit, repo) {
         }
       }
     `,
-    { repo }
+    { repo: repo.substr(repo.indexOf("/") + 1) }
   );
   return {
     users: assignableUsers,
