@@ -32,7 +32,9 @@ function createGitHubClient(token, repo) {
       const data = await octokit.graphql(
         `mutation CreateIssue($repoId: ID!, $title: String!) {
           createIssue(input: { repositoryId: $repoId, title: $title }) {
-            issue
+            issue {
+              number
+            }
           }
         }`,
         { repoId, title }
