@@ -20,7 +20,6 @@ function createGitHubClient(token, repo) {
         }`,
         { repo: repo.substr(repo.indexOf("/") + 1) }
       );
-      console.log(data);
       return {
         issues: data.repository.issues.edges.map(e => e.node)
       };

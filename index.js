@@ -12,6 +12,7 @@ function getExpiringIssueTitle(email) {
 
 async function findOrCreateIssuesForKeys(githubClient, keys) {
   const issues = githubClient.getIssues();
+  console.log(keys, issues);
 
   const expiredKeys = keys.filter(k => k.status === "expired");
   await Promise.all(

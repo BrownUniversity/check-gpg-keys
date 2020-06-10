@@ -411,6 +411,7 @@ function getExpiringIssueTitle(email) {
 
 async function findOrCreateIssuesForKeys(githubClient, keys) {
   const issues = githubClient.getIssues();
+  console.log(keys, issues);
 
   const expiredKeys = keys.filter(k => k.status === "expired");
   await Promise.all(
@@ -529,7 +530,6 @@ function createGitHubClient(token, repo) {
         }`,
         { repo: repo.substr(repo.indexOf("/") + 1) }
       );
-      console.log(data);
       return {
         issues: data.repository.issues.edges.map(e => e.node)
       };
