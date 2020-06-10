@@ -1,7 +1,7 @@
 const core = require("@actions/core");
 const github = require("@actions/github");
 
-function getKeys(keyringDir) {
+async function getKeys(keyringDir) {
   return [
     {
       status: "valid",
@@ -43,8 +43,8 @@ async function getRepoData(octokit, repo) {
   );
   console.log(data);
   return {
-    users: data.repository.assignableUsers,
-    issues: data.repository.issues
+    users: data.repository.assignableUsers.edges,
+    issues: data.repository.issues.edges
   };
 }
 

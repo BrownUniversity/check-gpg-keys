@@ -400,7 +400,7 @@ module.exports = require("os");
 const core = __webpack_require__(470);
 const github = __webpack_require__(469);
 
-function getKeys(keyringDir) {
+async function getKeys(keyringDir) {
   return [
     {
       status: "valid",
@@ -442,8 +442,8 @@ async function getRepoData(octokit, repo) {
   );
   console.log(data);
   return {
-    users: data.repository.assignableUsers,
-    issues: data.repository.issues
+    users: data.repository.assignableUsers.edges,
+    issues: data.repository.issues.edges
   };
 }
 
