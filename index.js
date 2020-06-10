@@ -1,70 +1,63 @@
 const core = require("@actions/core");
-const github = require("@actions/github");
+const { getKeys } = require("./gpg");
+const github = require("./github");
 
-async function getKeys(keyringDir) {
-  return [
-    {
-      status: "valid",
-      email: "sumner_warren@brown.edu"
-    },
-    {
-      status: "expiring",
-      email: "sumner_warren@brown.edu"
-    },
-    {
-      status: "expired",
-      email: "sumner_warren@brown.edu"
-    }
-  ];
+function getExpiredIssueTitle(email) {
+  return `blackbox key has expired: ${email}`;
 }
 
-async function getRepoData(octokit, repo) {
-  const data = await octokit.graphql(
-    `query usersAndIssues($repo: String!) {
-      repository(owner: "BrownUniversity", name: $repo) {
-        assignableUsers(first: 50) {
-          edges {
-            node {
-              login
-              email
-            }
-          }
-        }
-        issues(first: 10, states: OPEN) {
-          edges {
-            node {
-              title
-            }
-          }
-        }
+function getExpiringIssueTitle(email) {
+  return `blackbox key expiring soon: ${email}`;
+}
+
+async function findOrCreateIssuesForKeys(githubClient, keys) {
+  const issues = githubClient.getIssues();
+
+  const expiredKeys = keys.filter(k => k.status === "expired");
+  await Promise.all(
+    expiredKeys.map(key => {
+      const expiredTitle = getExpiredIssueTitle(key.email);
+      const expiredIssue = issues.find(issue => issue.title === expiredTitle);
+      const expiringIssue = issues.find(issue => issue.title === getExpiringIssueTitle(key.email));
+
+      if (expiredIssue) return null;
+
+      if (expiringIssue) {
+        return githubClient.updateIssueTitle(expiringIssue, expiringTitle);
       }
-    }`,
-    { repo: repo.substr(repo.indexOf("/") + 1) }
-  );
-  return {
-    users: data.repository.assignableUsers.edges.map(e => e.node),
-    issues: data.repository.issues.edges.map(e => e.node)
-  };
-}
 
-async function findOrCreateIssue({ keys, users, issues }) {
-  console.log({ keys, users, issues });
+      return githubClient.createIssue(expiredTitle);
+    })
+  );
+  
+  const expiringKeys = keys.filter(k => k.status === "expiring");
+  await Promise.all(
+    expiredKeys.map(key => {
+      const expiringTitle = getExpiringIssueTitle(key.email);
+      const expiringIssue = issues.find(issue => issue.title === expiringTitle);
+
+      if (expiringIssue) return null;
+
+      return githubClient.createIssue(expiringTitle);
+    })
+  );
 }
 
 async function run() {
-  const token = core.getInput("github-token");
-  const repo = core.getInput("repo-name");
-  const keyringDir = core.getInput("keyring-directory");
-  const octokit = github.getOctokit(token);
-  const keys = await getKeys(keyringDir);
-  const { users, issues } = await getRepoData(octokit, repo);
-  await findOrCreateIssue({ keys, users, issues });
+  try {
+    const githubToken = core.getInput("github-token");
+    const repoName = core.getInput("repo-name");
+    const keyringDir = core.getInput("keyring-directory");
+
+    await findOrCreateIssues(
+      createGitHubClient(githubToken, repoName),
+      await getKeys(keyringDir)
+    );
+  } catch (e) {
+    core.setFailed(e.message);
+  }
 }
 
-try {
-  (async function () {
-    await run();
-  })();
-} catch (e) {
-  core.setFailed(e.message);
-}
+(async function () {
+  await run();
+})();

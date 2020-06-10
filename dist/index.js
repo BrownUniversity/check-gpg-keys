@@ -398,75 +398,68 @@ module.exports = require("os");
 /***/ (function(__unusedmodule, __unusedexports, __webpack_require__) {
 
 const core = __webpack_require__(470);
-const github = __webpack_require__(469);
+const { getKeys } = __webpack_require__(880);
+const github = __webpack_require__(126);
 
-async function getKeys(keyringDir) {
-  return [
-    {
-      status: "valid",
-      email: "sumner_warren@brown.edu"
-    },
-    {
-      status: "expiring",
-      email: "sumner_warren@brown.edu"
-    },
-    {
-      status: "expired",
-      email: "sumner_warren@brown.edu"
-    }
-  ];
+function getExpiredIssueTitle(email) {
+  return `blackbox key has expired: ${email}`;
 }
 
-async function getRepoData(octokit, repo) {
-  const data = await octokit.graphql(
-    `query usersAndIssues($repo: String!) {
-      repository(owner: "BrownUniversity", name: $repo) {
-        assignableUsers(first: 50) {
-          edges {
-            node {
-              login
-              email
-            }
-          }
-        }
-        issues(first: 10, states: OPEN) {
-          edges {
-            node {
-              title
-            }
-          }
-        }
+function getExpiringIssueTitle(email) {
+  return `blackbox key expiring soon: ${email}`;
+}
+
+async function findOrCreateIssuesForKeys(githubClient, keys) {
+  const issues = githubClient.getIssues();
+
+  const expiredKeys = keys.filter(k => k.status === "expired");
+  await Promise.all(
+    expiredKeys.map(key => {
+      const expiredTitle = getExpiredIssueTitle(key.email);
+      const expiredIssue = issues.find(issue => issue.title === expiredTitle);
+      const expiringIssue = issues.find(issue => issue.title === getExpiringIssueTitle(key.email));
+
+      if (expiredIssue) return null;
+
+      if (expiringIssue) {
+        return githubClient.updateIssueTitle(expiringIssue, expiringTitle);
       }
-    }`,
-    { repo: repo.substr(repo.indexOf("/") + 1) }
-  );
-  return {
-    users: data.repository.assignableUsers.edges.map(e => e.node),
-    issues: data.repository.issues.edges.map(e => e.node)
-  };
-}
 
-async function findOrCreateIssue({ keys, users, issues }) {
-  console.log({ keys, users, issues });
+      return githubClient.createIssue(expiredTitle);
+    })
+  );
+  
+  const expiringKeys = keys.filter(k => k.status === "expiring");
+  await Promise.all(
+    expiredKeys.map(key => {
+      const expiringTitle = getExpiringIssueTitle(key.email);
+      const expiringIssue = issues.find(issue => issue.title === expiringTitle);
+
+      if (expiringIssue) return null;
+
+      return githubClient.createIssue(expiringTitle);
+    })
+  );
 }
 
 async function run() {
-  const token = core.getInput("github-token");
-  const repo = core.getInput("repo-name");
-  const keyringDir = core.getInput("keyring-directory");
-  const octokit = github.getOctokit(token);
-  const keys = await getKeys(keyringDir);
-  const { users, issues } = await getRepoData(octokit, repo);
-  await findOrCreateIssue({ keys, users, issues });
+  try {
+    const githubToken = core.getInput("github-token");
+    const repoName = core.getInput("repo-name");
+    const keyringDir = core.getInput("keyring-directory");
+
+    await findOrCreateIssues(
+      createGitHubClient(githubToken, repoName),
+      await getKeys(keyringDir)
+    );
+  } catch (e) {
+    core.setFailed(e.message);
+  }
 }
 
-try {
-  (async function () {
-    await run();
-  })();
-} catch (e) {
-  core.setFailed(e.message);
-}
+(async function () {
+  await run();
+})();
 
 
 /***/ }),
@@ -507,6 +500,49 @@ const macosRelease = release => {
 module.exports = macosRelease;
 // TODO: remove this in the next major version
 module.exports.default = macosRelease;
+
+
+/***/ }),
+
+/***/ 126:
+/***/ (function(module, __unusedexports, __webpack_require__) {
+
+const github = __webpack_require__(469);
+
+function createGitHubClient(token, repo) {
+  const octokit = github.getOctokit(token);
+
+  return {
+    getIssues: async function() {
+      const { respository } = await octokit.graphql(
+        `query openIssues($repo: String!) {
+          repository(owner: "BrownUniversity", name: $repo) {
+            issues(first: 10, states: OPEN) {
+              edges {
+                node {
+                  id
+                  title
+                }
+              }
+            }
+          }
+        }`,
+        { repo: repo.substr(repo.indexOf("/") + 1) }
+      );
+      return {
+        issues: repository.issues.edges.map(e => e.node)
+      };
+    },
+    createIssue: async function(title) {
+      console.log(`new issue: ${title}`);
+    },
+    updateIssueTitle: async function(issue, title) {
+      console.log(`update issue ${issue.id}: ${title}`);
+    }
+  }
+}
+
+module.exports = createGitHubClient;
 
 
 /***/ }),
@@ -6055,6 +6091,304 @@ module.exports.Collection = Hook.Collection
 
 /***/ }),
 
+/***/ 531:
+/***/ (function(module, __unusedexports, __webpack_require__) {
+
+/*!
+ * node-gpg
+ * Copyright(c) 2011 Nicholas Penree <drudge@conceited.net>
+ * MIT Licensed
+ */
+
+/**
+ * Module dependencies.
+ */
+var fs = __webpack_require__(747);
+var spawnGPG = __webpack_require__(579);
+var keyRegex = /^gpg: key (.*?):/;
+
+/**
+ * Base `GPG` object.
+ */
+var GPG = {
+
+  /**
+   * Raw call to gpg.
+   *
+   * @param  {String}   stdin  String to send to stdin.
+   * @param  {Array}    [args] Array of arguments.
+   * @param  {Function} [fn]   Callback.
+   * @api public
+   */
+  call: function(stdin, args, fn) {
+    spawnGPG(stdin, args, fn);
+  },
+
+  /**
+   * Raw streaming call to gpg. Reads from input file and writes to output file.
+   *
+   * @param  {String}   inputFileName  Name of input file.
+   * @param  {String}   outputFileName Name of output file.
+   * @param  {Array}    [args]         Array of arguments.
+   * @param  {Function} [fn]           Callback.
+   * @api public
+   */
+  callStreaming: function(inputFileName, outputFileName, args, fn) {
+    spawnGPG.streaming({source: inputFileName, dest: outputFileName}, args, fn);
+  },
+
+  /**
+   * Encrypt source file passed as `options.source` and store it in a file specified in `options.dest`.
+   *
+   * @param {Object}   options  Should contain 'source' and 'dest' keys.
+   * @param {Function} [fn]     Callback.
+   * @api public
+   */
+  encryptToFile: function (options, fn){
+    spawnGPG.streaming(options, ['--encrypt'], fn);
+  },
+
+  /**
+   * Encrypt source `file` and pass the encrypted contents to the callback `fn`.
+   *
+   * @param {String}   file   Filename.
+   * @param {Function} [fn]   Callback containing the encrypted file contents.
+   * @api public
+   */
+  encryptFile: function(file, fn){
+    var self = this;
+
+    fs.readFile(file, function(err, content){
+      if (err) return fn(err);
+      self.encrypt(content, fn);
+    });
+  },
+
+  /**
+   * Encrypt source stream passed as `options.source` and pass it to the stream specified in `options.dest`.
+   * Is basicaly the same method as `encryptToFile()`.
+   *
+   * @param {Object}   options  Should contain 'source' and 'dest' keys that are streams.
+   * @param {Function} [fn]     Callback.
+   * @api public
+   */
+  encryptToStream: function (options, fn){
+    spawnGPG.streaming(options, ['--encrypt'], fn);
+  },
+
+  /**
+   * Encrypt source `stream` and pass the encrypted contents to the callback `fn`.
+   *
+   * @param {ReadableStream} stream Stream to read from.
+   * @param {Array}          [args] Array of additonal gpg arguments.
+   * @param {Function}       [fn]   Callback containing the encrypted file contents.
+   * @api public
+   */
+  encryptStream: function (stream, args, fn){
+    var self   = this;
+    var chunks = [];
+
+    stream.on('data', function (chunk){
+      chunks.push(chunk);
+    });
+
+    stream.on('end', function (){
+      self.encrypt(Buffer.concat(chunks), args, fn);
+    });
+
+    stream.on('error', fn);
+  },
+
+  /**
+   * Encrypt `str` and pass the encrypted version to the callback `fn`.
+   *
+   * @param {String|Buffer}   str    String to encrypt.
+   * @param {Array}    [args] Array of additonal gpg arguments.
+   * @param {Function} [fn]   Callback containing the encrypted Buffer.
+   * @api public
+   */
+  encrypt: function(str, args, fn){
+    spawnGPG(str, ['--encrypt'], args, fn);
+  },
+
+  /**
+   * Decrypt `str` and pass the decrypted version to the callback `fn`.
+   *
+   * @param {String|Buffer} str    Data to decrypt.
+   * @param {Array}         [args] Array of additonal gpg arguments.
+   * @param {Function}      [fn]   Callback containing the decrypted Buffer.
+   * @api public
+   */
+  decrypt: function(str, args, fn){
+    spawnGPG(str, ['--decrypt'], args, fn);
+  },
+
+  /**
+   * Decrypt source `file` and pass the decrypted contents to the callback `fn`.
+   *
+   * @param {String}   file Filename.
+   * @param {Function} fn   Callback containing the decrypted file contents.
+   * @api public
+   */
+  decryptFile: function(file, fn){
+    var self = this;
+
+    fs.readFile(file, function(err, content){
+      if (err) return fn(err);
+      self.decrypt(content, fn);
+    });
+  },
+
+  /**
+   * Decrypt source file passed as `options.source` and store it in a file specified in `options.dest`.
+   *
+   * @param {Object}   options  Should contain 'source' and 'dest' keys.
+   * @param {Function} fn       Callback
+   * @api public
+   */
+  decryptToFile: function (options, fn){
+    spawnGPG.streaming(options, ['--decrypt'], fn);
+  },
+
+  /**
+   * Decrypt source `stream` and pass the decrypted contents to the callback `fn`.
+   *
+   * @param {ReadableStream} stream Stream to read from.
+   * @param {Array}          [args] Array of additonal gpg arguments.
+   * @param {Function}       [fn]   Callback containing the decrypted file contents.
+   * @api public
+   */
+  decryptStream: function(stream, args, fn){
+    var self   = this;
+    var chunks = [];
+
+    stream.on('data', function (chunk){
+      chunks.push(chunk);
+    });
+
+    stream.on('end', function (){
+      self.decrypt(Buffer.concat(chunks), args, fn);
+    });
+
+    stream.on('error', fn);
+  },
+
+  /**
+   * Decrypt source stream passed as `options.source` and pass it to the stream specified in `options.dest`.
+   * This is basicaly the same method as `decryptToFile()`.
+   *
+   * @param {Object}   options  Should contain 'source' and 'dest' keys that are streams.
+   * @param {Function} fn       Callback
+   * @api public
+   */
+  decryptToStream: function (options, fn){
+    spawnGPG.streaming(options, ['--decrypt'], fn);
+  },
+
+  /**
+   * Clearsign `str` and pass the signed message to the callback `fn`.
+   *
+   * @param {String|Buffer} str  String to clearsign.
+   * @param {Array}         [args] Array of additonal gpg arguments.
+   * @param {Function}      fn   Callback containing the signed message Buffer.
+   * @api public
+   */
+  clearsign: function(str, args, fn){
+    spawnGPG(str, ['--clearsign'], args, fn);
+  },
+
+  /**
+   * Verify `str` and pass the output to the callback `fn`.
+   *
+   * @param {String|Buffer} str    Signature to verify.
+   * @param {Array}         [args] Array of additonal gpg arguments.
+   * @param {Function}      [fn]   Callback containing the signed message Buffer.
+   * @api public
+   */
+  verifySignature: function(str, args, fn){
+    // Set logger fd, verify otherwise outputs to stderr for whatever reason
+    var defaultArgs = ['--logger-fd', '1', '--verify'];
+    spawnGPG(str, defaultArgs, args, fn);
+  },
+
+  /**
+   * Add a key to the keychain by filename.
+   *
+   * @param {String}  fileName  Key filename.
+   * @param {Array}   [args]    Array of additonal gpg arguments.
+   * @param {Function} [fn]     Callback containing the signed message Buffer.
+   * @api public
+   */
+  importKeyFromFile: function(fileName, args, fn){
+    if (typeof args === 'function') {
+      fn = args;
+      args = [];
+    }
+
+    var self = this;
+
+    fs.readFile(fileName, function(readErr, str) {
+      if (readErr) return fn(readErr);
+      self.importKey(str, args, fn);
+    });
+  },
+
+  /**
+   * Add an ascii-armored key to gpg. Expects the key to be passed as input.
+   *
+   * @param {String}   keyStr  Key string (armored).
+   * @param {Array}    args    Optional additional arguments to pass to gpg.
+   * @param {Function} fn      Callback containing the signed message Buffer.
+   * @api public
+   */
+  importKey: function(keyStr, args, fn){
+    if (typeof args === 'function') {
+      fn = args;
+      args = [];
+    }
+
+    // Set logger fd, verify otherwise outputs to stderr for whatever reason
+    var defaultArgs = ['--logger-fd', '1', '--import'];
+
+    spawnGPG(keyStr, defaultArgs, args, function(importError, result) {
+      if (importError) {
+        // Ignorable errors
+        if (/already in secret keyring/.test(importError.message)) {
+          result = importError.message;
+        } else {
+          return fn(importError);
+        }
+      }
+      // Grab key fingerprint and send it back as second arg
+      var match = result.toString().match(keyRegex);
+      fn(null, result.toString(), match && match[1]);
+    });
+  },
+
+  /**
+   * Removes a key by fingerprint. Warning: this will remove both pub and privkeys!
+   *
+   * @param {String}   keyID  Key fingerprint.
+   * @param {Array}    [args] Array of additonal gpg arguments.
+   * @param {Function} fn     Callback containing the signed message Buffer.
+   * @api public
+   */
+  removeKey: function(keyID, args, fn){
+    // Set logger fd, verify otherwise outputs to stderr for whatever reason
+    var defaultArgs = ['--logger-fd', '1', '--delete-secret-and-public-key'];
+    spawnGPG(keyID, defaultArgs, args, fn);
+  }
+
+};
+
+/**
+ * Expose `GPG` object.
+ */
+module.exports = GPG;
+
+
+/***/ }),
+
 /***/ 539:
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
@@ -6723,6 +7057,146 @@ function parse(command, args, options) {
 }
 
 module.exports = parse;
+
+
+/***/ }),
+
+/***/ 579:
+/***/ (function(module, __unusedexports, __webpack_require__) {
+
+"use strict";
+
+
+var spawn = __webpack_require__(129).spawn;
+var globalArgs = ['--batch'];
+var readStream = __webpack_require__(747).createReadStream;
+var writeStream = __webpack_require__(747).createWriteStream;
+
+/**
+ * Wrapper around spawning GPG. Handles stdout, stderr, and default args.
+ *
+ * @param  {String}   input       Input string. Piped to stdin.
+ * @param  {Array}    defaultArgs Default arguments for this task.
+ * @param  {Array}    args        Arguments to pass to GPG when spawned.
+ * @param  {Function} cb          Callback.
+ */
+module.exports = function(input, defaultArgs, args, cb) {
+  // Allow calling with (input, defaults, cb)
+  if (typeof args === 'function'){
+    cb = args;
+    args = [];
+  }
+
+  cb = once(cb);
+
+  var gpgArgs = (args || []).concat(defaultArgs);
+  var buffers = [];
+  var buffersLength = 0;
+  var error = '';
+  var gpg = spawnIt(gpgArgs, cb);
+
+  gpg.stdout.on('data', function (buf){
+    buffers.push(buf);
+    buffersLength += buf.length;
+  });
+
+  gpg.stderr.on('data', function(buf){
+    error += buf.toString('utf8');
+  });
+
+  gpg.on('close', function(code){
+    var msg = Buffer.concat(buffers, buffersLength);
+    if (code !== 0) {
+      // If error is empty, we probably redirected stderr to stdout (for verifySignature, import, etc)
+      return cb(new Error(error || msg));
+    }
+
+    cb(null, msg, error);
+  });
+
+  gpg.stdin.end(input);
+};
+
+/**
+ * Similar to spawnGPG, but sets up a read/write pipe to/from a stream.
+ *
+ * @param  {Object}   options Options. Should have source and dest strings or streams.
+ * @param  {Array}    args    GPG args.
+ * @param  {Function} cb      Callback
+ */
+module.exports.streaming = function(options, args, cb) {
+  cb = once(cb);
+  options = options || {};
+
+  var isSourceStream = isStream(options.source);
+  var isDestStream   = isStream(options.dest);
+
+  if (typeof options.source !== 'string' && !isSourceStream){
+    return cb(new Error('Missing \'source\' option (string or stream)'));
+  } else if (typeof options.dest !== 'string' && !isDestStream){
+    return cb(new Error('Missing \'dest\' option (string or stream)'));
+  }
+
+  var sourceStream;
+  if (!isSourceStream) {
+    // This will throw if the file doesn't exist
+    try {
+      sourceStream = readStream(options.source);
+    } catch(e) {
+      return cb(new Error(options.source + ' does not exist. Error: ' + e.message));
+    }
+  } else {
+    sourceStream = options.source;
+  }
+
+  var destStream;
+  if (!isDestStream) {
+    try {
+      destStream = writeStream(options.dest);
+    } catch(e) {
+      return cb(new Error('Error opening ' + options.dest + '. Error: ' + e.message));
+    }
+  } else {
+    destStream = options.dest;
+  }
+
+  // Go for it
+  var gpg = spawnIt(args, cb);
+
+  if (!isDestStream) {
+    gpg.on('close', function (code){
+      cb(null);
+    });
+  } else {
+    cb(null, destStream);
+  }
+
+  // Pipe input file into gpg stdin; gpg stdout into output file..
+  sourceStream.pipe(gpg.stdin);
+  gpg.stdout.pipe(destStream);
+};
+
+// Wrapper around spawn. Catches error events and passed global args.
+function spawnIt(args, fn) {
+  var gpg = spawn('gpg', globalArgs.concat(args || []) );
+  gpg.on('error', fn);
+  return gpg;
+}
+
+// Ensures a callback is only ever called once.
+function once(fn) {
+  var called = false;
+  return function() {
+    if (called) return;
+    called = true;
+    fn.apply(this, arguments);
+  };
+}
+
+// Check if input is stream with duck typing
+function isStream (stream) {
+  return stream != null && typeof stream === 'object' && typeof stream.pipe === 'function';
+};
 
 
 /***/ }),
@@ -9340,6 +9814,76 @@ module.exports = function (str) {
 		arg :
 		bin + (arg ? ' ' + arg : '')
 	);
+};
+
+
+/***/ }),
+
+/***/ 880:
+/***/ (function(module, __unusedexports, __webpack_require__) {
+
+const gpg = __webpack_require__(531);
+
+function extractFromKey(key, testRE, extractionIndex) {
+  const match = key.match(testRE);
+  if (match) {
+    return match[extractionIndex];
+  }
+  return null;
+}
+
+function getKeyStatus(expirationDateString) {
+  if (expirationDateString === null) {
+    return "valid";
+  }
+
+  const now = Date.now();
+  const weekFromNow = now + (1000 * 60 * 60 * 24 * 7);
+  const expirationDate = new Date(expirationDateString).getTime();
+  if (expirationDate < now) {
+    return "expired";
+  }
+  if (expirationDate < weekFromNow) {
+    return "expiring";
+  }
+  return "valid";
+}
+
+function parseKey(key) {
+  const email = extractFromKey(key, /<([^>]+)>/, 1);
+  const expirationDateString = extractFromKey(key, /\[expire[sd]: (\d\d\d\d-\d\d-\d\d)\]/, 1);
+  return {
+    email,
+    status: getKeyStatus(expirationDateString)
+  };
+}
+
+function parseKeys(listKeysOutput) {
+  const keyLines = listKeysOutput.trim().split("\n");
+  const pubs = keyLines.filter(line => line.match(/^pub/)).map(l => l.trim());
+  const uids = keyLines.filter(line => line.match(/^uid/)).map(l => l.trim());
+  const keys = pubs.reduce((memo, curr, index) => memo.concat(curr + uids[index]) , []);
+  return keys.map(parseKey);
+}
+
+function listKeys(homedir) {
+  return new Promise((resolve, reject) => {
+    gpg.call("", [`--homedir=${homedir}`, "--list-keys"], (err, result) => {
+      if (err) {
+        return reject(err);
+      }
+      return resolve(result);
+    });
+  });
+}
+
+async function getKeys(keyringDir) {
+  const listKeysOutput = listKeys(keyringDir);
+}
+
+module.exports = {
+  parseKeys,
+  getKeys
 };
 
 
