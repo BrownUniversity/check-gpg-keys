@@ -1,6 +1,12 @@
 name: 'Check GPG Keys'
 description: 'Check for expired or expiring GPG keys'
 inputs:
+  repo-name:
+    description: 'repo name'
+    required: true
+  github-token:
+    description: 'github token for API access'
+    required: true
   keyring-directory:
     description: 'path to the directory containing the keyring file'
     required: false
