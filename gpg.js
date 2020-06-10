@@ -54,7 +54,8 @@ function listKeys(homedir) {
 }
 
 async function getKeys(keyringDir) {
-  const listKeysOutput = listKeys(keyringDir);
+  const listKeysOutput = await listKeys(keyringDir);
+  return parseKeys(listKeysOutput);
 }
 
 module.exports = {
