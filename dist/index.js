@@ -449,7 +449,6 @@ async function run() {
     const repoName = core.getInput("repo-name");
     const keyringDir = core.getInput("keyring-directory");
 
-    console.log(createGitHubClient);
     await findOrCreateIssuesForKeys(
       createGitHubClient(githubToken, repoName),
       await getKeys(keyringDir)
@@ -9883,6 +9882,7 @@ function listKeys(homedir) {
 
 async function getKeys(keyringDir) {
   const listKeysOutput = await listKeys(keyringDir);
+  console.log(listKeysOutput);
   return parseKeys(listKeysOutput);
 }
 
