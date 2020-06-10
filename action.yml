@@ -1,0 +1,10 @@
+name: 'Check GPG Keys'
+description: 'Check for expired or expiring GPG keys'
+inputs:
+  keyring-directory:
+    description: 'path to the directory containing the keyring file'
+    required: false
+    default: '.blackbox'
+runs:
+  using: 'node12'
+  main: 'index.js'
