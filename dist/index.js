@@ -410,7 +410,7 @@ function getExpiringIssueTitle(email) {
 }
 
 async function findOrCreateIssuesForKeys(githubClient, keys) {
-  const issues = await githubClient.getIssues();
+  const { repoId, issues } = await githubClient.getRepoData();
 
   const expiredKeys = keys.filter(k => k.status === "expired");
   await Promise.all(
@@ -425,7 +425,7 @@ async function findOrCreateIssuesForKeys(githubClient, keys) {
         return githubClient.updateIssueTitle(expiringIssue, expiringTitle);
       }
 
-      return githubClient.createIssue(expiredTitle);
+      return githubClient.createIssue({ repoId, title: expiredTitle });
     })
   );
   
@@ -437,7 +437,7 @@ async function findOrCreateIssuesForKeys(githubClient, keys) {
 
       if (expiringIssue) return null;
 
-      return githubClient.createIssue(expiringTitle);
+      return githubClient.createIssue({ repoId, title: expiringTitle });
     })
   );
 }
@@ -513,10 +513,11 @@ function createGitHubClient(token, repo) {
   const octokit = github.getOctokit(token);
 
   return {
-    getIssues: async function() {
+    getRepoData: async function() {
       const data = await octokit.graphql(
         `query openIssues($repo: String!) {
           repository(owner: "BrownUniversity", name: $repo) {
+            id
             issues(first: 10, states: OPEN) {
               edges {
                 node {
@@ -529,11 +530,24 @@ function createGitHubClient(token, repo) {
         }`,
         { repo: repo.substr(repo.indexOf("/") + 1) }
       );
-      return data.repository.issues.edges.map(e => e.node);
+      return {
+        repoId: ata.repository.id,
+        issues: data.repository.issues.edges.map(e => e.node)
+      };
     },
 
-    createIssue: async function(title) {
+    createIssue: async function({ repoId, title }) {
       console.log(`new issue: ${title}`);
+      const data = await octokit.graphql(
+        `mutation CreateIssue($repoId: ID!, $title: String!) {
+          createIssue(input: { repositoryId: $repoId, title: $title }) {
+            issue
+          }
+        }`,
+        { repoId, title }
+      );
+      console.log(data);
+      return data;
     },
 
     updateIssueTitle: async function(issue, title) {
