@@ -552,16 +552,19 @@ function createGitHubClient(token, repo) {
     },
 
     updateIssueTitle: async function(issue, title) {
+      console.log(`update issue ${issue.id}: ${title}`);
       const data = await octokit.graphql(
         `mutation UpdateIssueTitle($issueId: ID!, $title: String!) {
           updateIssue(input: { id: $issueId, title: $title }) {
             issue {
               number
+              title
             }
           }
         }`,
         { issueId: issue.id, title }
       );
+      console.log(data);
       return data.updateIssue.issue.number;
     }
   }
