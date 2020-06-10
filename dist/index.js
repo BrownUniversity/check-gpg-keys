@@ -440,10 +440,9 @@ async function getRepoData(octokit, repo) {
     }`,
     { repo: repo.substr(repo.indexOf("/") + 1) }
   );
-  console.log(data);
   return {
-    users: data.repository.assignableUsers.edges,
-    issues: data.repository.issues.edges
+    users: data.repository.assignableUsers.edges.map(e => e.node),
+    issues: data.repository.issues.edges.map(e => e.node)
   };
 }
 
