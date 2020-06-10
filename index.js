@@ -55,8 +55,8 @@ async function findOrCreateIssue({ keys, users, issues }) {
 
 async function run() {
   const token = core.getInput("github-token");
-  const keyringDir = core.getInput("keyring-directory");
   const repo = core.getInput("repo");
+  const keyringDir = core.getInput("keyring-directory");
   const octokit = github.getOctokit(token);
   const keys = await getKeys(keyringDir);
   const { users, issues } = await getUsers(octokit, repo);
