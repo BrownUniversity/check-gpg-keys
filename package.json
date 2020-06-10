@@ -8,6 +8,7 @@
   "private": true,
   "scripts": {
     "build": "ncc build index.js",
+    "lint": "eslint *.js",
     "test": "jest",
     "test:watch": "jest --watch"
   },
@@ -18,7 +19,10 @@
   },
   "devDependencies": {
     "@zeit/ncc": "^0.22.3",
+    "eslint": "^7.2.0",
+    "eslint-config-brown": "github:brownuniversity/eslint-config-brown#semver:^0.16",
     "jest": "^26.0.1",
-    "mockdate": "^3.0.2"
+    "mockdate": "^3.0.2",
+    "prettier": "^2.0.5"
   }
 }

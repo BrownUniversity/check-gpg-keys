@@ -4,7 +4,7 @@ function createGitHubClient(token, repo) {
   const octokit = github.getOctokit(token);
 
   return {
-    getRepoData: async function() {
+    async getRepoData() {
       const data = await octokit.graphql(
         `query openIssues($repo: String!) {
           repository(owner: "BrownUniversity", name: $repo) {
@@ -23,11 +23,11 @@ function createGitHubClient(token, repo) {
       );
       return {
         repoId: data.repository.id,
-        issues: data.repository.issues.edges.map(e => e.node)
+        issues: data.repository.issues.edges.map((e) => e.node),
       };
     },
 
-    createIssue: async function({ repoId, title }) {
+    async createIssue({ repoId, title }) {
       const data = await octokit.graphql(
         `mutation CreateIssue($repoId: ID!, $title: String!) {
           createIssue(input: { repositoryId: $repoId, title: $title }) {
@@ -41,7 +41,7 @@ function createGitHubClient(token, repo) {
       return data.createIssue.issue.number;
     },
 
-    updateIssueTitle: async function(issue, title) {
+    async updateIssueTitle(issue, title) {
       const data = await octokit.graphql(
         `mutation UpdateIssueTitle($issueId: ID!, $title: String!) {
           updateIssue(input: { id: $issueId, title: $title }) {
@@ -54,10 +54,10 @@ function createGitHubClient(token, repo) {
         { issueId: issue.id, title }
       );
       return data.updateIssue.issue.number;
-    }
-  }
+    },
+  };
 }
 
 module.exports = {
-  createGitHubClient
+  createGitHubClient,
 };

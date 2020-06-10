@@ -412,13 +412,15 @@ function getExpiringIssueTitle(email) {
 async function findOrCreateIssuesForKeys(githubClient, keys) {
   const { repoId, issues } = await githubClient.getRepoData();
 
-  const expiredKeys = keys.filter(k => k.status === "expired");
+  const expiredKeys = keys.filter((k) => k.status === "expired");
   await Promise.all(
-    expiredKeys.map(key => {
+    expiredKeys.map((key) => {
       const expiredTitle = getExpiredIssueTitle(key.email);
       const expiringTitle = getExpiringIssueTitle(key.email);
-      const expiredIssue = issues.find(issue => issue.title === expiredTitle);
-      const expiringIssue = issues.find(issue => issue.title === expiringTitle);
+      const expiredIssue = issues.find((issue) => issue.title === expiredTitle);
+      const expiringIssue = issues.find(
+        (issue) => issue.title === expiringTitle
+      );
 
       if (expiredIssue) return null;
 
@@ -429,12 +431,14 @@ async function findOrCreateIssuesForKeys(githubClient, keys) {
       return githubClient.createIssue({ repoId, title: expiredTitle });
     })
   );
-  
-  const expiringKeys = keys.filter(k => k.status === "expiring");
+
+  const expiringKeys = keys.filter((k) => k.status === "expiring");
   await Promise.all(
-    expiringKeys.map(key => {
+    expiringKeys.map((key) => {
       const expiringTitle = getExpiringIssueTitle(key.email);
-      const expiringIssue = issues.find(issue => issue.title === expiringTitle);
+      const expiringIssue = issues.find(
+        (issue) => issue.title === expiringTitle
+      );
 
       if (expiringIssue) return null;
 
@@ -458,7 +462,7 @@ async function run() {
   }
 }
 
-(async function () {
+(async function main() {
   await run();
 })();
 
@@ -514,7 +518,7 @@ function createGitHubClient(token, repo) {
   const octokit = github.getOctokit(token);
 
   return {
-    getRepoData: async function() {
+    async getRepoData() {
       const data = await octokit.graphql(
         `query openIssues($repo: String!) {
           repository(owner: "BrownUniversity", name: $repo) {
@@ -533,11 +537,11 @@ function createGitHubClient(token, repo) {
       );
       return {
         repoId: data.repository.id,
-        issues: data.repository.issues.edges.map(e => e.node)
+        issues: data.repository.issues.edges.map((e) => e.node),
       };
     },
 
-    createIssue: async function({ repoId, title }) {
+    async createIssue({ repoId, title }) {
       const data = await octokit.graphql(
         `mutation CreateIssue($repoId: ID!, $title: String!) {
           createIssue(input: { repositoryId: $repoId, title: $title }) {
@@ -551,7 +555,7 @@ function createGitHubClient(token, repo) {
       return data.createIssue.issue.number;
     },
 
-    updateIssueTitle: async function(issue, title) {
+    async updateIssueTitle(issue, title) {
       const data = await octokit.graphql(
         `mutation UpdateIssueTitle($issueId: ID!, $title: String!) {
           updateIssue(input: { id: $issueId, title: $title }) {
@@ -564,12 +568,12 @@ function createGitHubClient(token, repo) {
         { issueId: issue.id, title }
       );
       return data.updateIssue.issue.number;
-    }
-  }
+    },
+  };
 }
 
 module.exports = {
-  createGitHubClient
+  createGitHubClient,
 };
 
 
@@ -9866,7 +9870,7 @@ function getKeyStatus(expirationDateString) {
   }
 
   const now = Date.now();
-  const weekFromNow = now + (1000 * 60 * 60 * 24 * 7);
+  const weekFromNow = now + 1000 * 60 * 60 * 24 * 7;
   const expirationDate = new Date(expirationDateString).getTime();
   if (expirationDate < now) {
     return "expired";
@@ -9879,18 +9883,29 @@ function getKeyStatus(expirationDateString) {
 
 function parseKey(key) {
   const email = extractFromKey(key, /<([^>]+)>/, 1);
-  const expirationDateString = extractFromKey(key, /\[expire[sd]: (\d\d\d\d-\d\d-\d\d)\]/, 1);
+  const expirationDateString = extractFromKey(
+    key,
+    /\[expire[sd]: (\d\d\d\d-\d\d-\d\d)\]/,
+    1
+  );
   return {
     email,
-    status: getKeyStatus(expirationDateString)
+    status: getKeyStatus(expirationDateString),
   };
 }
 
 function parseKeys(listKeysOutput) {
   const keyLines = listKeysOutput.trim().split("\n");
-  const pubs = keyLines.filter(line => line.match(/^pub/)).map(l => l.trim());
-  const uids = keyLines.filter(line => line.match(/^uid/)).map(l => l.trim());
-  const keys = pubs.reduce((memo, curr, index) => memo.concat(curr + uids[index]) , []);
+  const pubs = keyLines
+    .filter((line) => line.match(/^pub/))
+    .map((l) => l.trim());
+  const uids = keyLines
+    .filter((line) => line.match(/^uid/))
+    .map((l) => l.trim());
+  const keys = pubs.reduce(
+    (memo, curr, index) => memo.concat(curr + uids[index]),
+    []
+  );
   return keys.map(parseKey);
 }
 
@@ -9912,7 +9927,7 @@ async function getKeys(keyringDir) {
 
 module.exports = {
   parseKeys,
-  getKeys
+  getKeys,
 };
 
 

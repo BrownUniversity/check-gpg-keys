@@ -13,13 +13,15 @@ function getExpiringIssueTitle(email) {
 async function findOrCreateIssuesForKeys(githubClient, keys) {
   const { repoId, issues } = await githubClient.getRepoData();
 
-  const expiredKeys = keys.filter(k => k.status === "expired");
+  const expiredKeys = keys.filter((k) => k.status === "expired");
   await Promise.all(
-    expiredKeys.map(key => {
+    expiredKeys.map((key) => {
       const expiredTitle = getExpiredIssueTitle(key.email);
       const expiringTitle = getExpiringIssueTitle(key.email);
-      const expiredIssue = issues.find(issue => issue.title === expiredTitle);
-      const expiringIssue = issues.find(issue => issue.title === expiringTitle);
+      const expiredIssue = issues.find((issue) => issue.title === expiredTitle);
+      const expiringIssue = issues.find(
+        (issue) => issue.title === expiringTitle
+      );
 
       if (expiredIssue) return null;
 
@@ -30,12 +32,14 @@ async function findOrCreateIssuesForKeys(githubClient, keys) {
       return githubClient.createIssue({ repoId, title: expiredTitle });
     })
   );
-  
-  const expiringKeys = keys.filter(k => k.status === "expiring");
+
+  const expiringKeys = keys.filter((k) => k.status === "expiring");
   await Promise.all(
-    expiringKeys.map(key => {
+    expiringKeys.map((key) => {
       const expiringTitle = getExpiringIssueTitle(key.email);
-      const expiringIssue = issues.find(issue => issue.title === expiringTitle);
+      const expiringIssue = issues.find(
+        (issue) => issue.title === expiringTitle
+      );
 
       if (expiringIssue) return null;
 
@@ -59,6 +63,6 @@ async function run() {
   }
 }
 
-(async function () {
+(async function main() {
   await run();
 })();

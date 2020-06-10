@@ -1,5 +1,5 @@
-const { parseKeys } = require("./gpg");
 const MockDate = require("mockdate");
+const { parseKeys } = require("./gpg");
 
 describe("parseKeys", () => {
   it("determines accurate status", () => {
