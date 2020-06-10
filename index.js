@@ -59,7 +59,7 @@ async function run() {
   const keyringDir = core.getInput("keyring-directory");
   const octokit = github.getOctokit(token);
   const keys = await getKeys(keyringDir);
-  const { users, issues } = await getUsers(octokit, repo);
+  const { users, issues } = await getRepoData(octokit, repo);
   await findOrCreateIssue(keys);
 }
 
