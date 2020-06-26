@@ -8,13 +8,21 @@
   "private": true,
   "scripts": {
     "build": "ncc build index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "lint": "eslint *.js",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "@actions/core": "^1.2.4",
-    "@actions/github": "^3.0.0"
+    "@actions/github": "^3.0.0",
+    "gpg": "^0.6.0"
   },
   "devDependencies": {
-    "@zeit/ncc": "^0.22.3"
+    "@zeit/ncc": "^0.22.3",
+    "eslint": "^7.2.0",
+    "eslint-config-brown": "github:brownuniversity/eslint-config-brown#semver:^0.16",
+    "jest": "^26.0.1",
+    "mockdate": "^3.0.2",
+    "prettier": "^2.0.5"
   }
 }

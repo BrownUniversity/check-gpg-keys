@@ -1,0 +1,16 @@
+name: Lint And Test
+on: push
+
+jobs:
+  lint-and-test:
+    name: Lint/Test source code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+      - name: Install node dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm run test
