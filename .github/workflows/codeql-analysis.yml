@@ -15,7 +15,7 @@ name: "CodeQL"
 on:
   push:
     branches-ignore:
-      - master
+      - main
 
 jobs:
   analyze:
