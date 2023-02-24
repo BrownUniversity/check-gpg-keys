@@ -948,7 +948,9 @@ function createGitHubClient(token, repo) {
   return {
     async getRepoData() {
       const repoName = repo.substr(repo.indexOf("/") + 1);
-      const { id } = await octokit.repos.get({
+      const {
+        data: { node_id: repoId },
+      } = await octokit.repos.get({
         owner: "BrownUniversity",
         repo: repoName,
       });
@@ -960,7 +962,7 @@ function createGitHubClient(token, repo) {
         }
       );
       return {
-        repoId: id,
+        repoId,
         issues,
       };
     },
