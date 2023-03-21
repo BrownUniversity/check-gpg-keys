@@ -134,7 +134,10 @@ async function findOrCreateIssuesForKeys(githubClient, keys) {
       if (expiredIssue) return null;
 
       if (expiringIssue) {
-        return githubClient.updateIssueTitle(expiringIssue.id, expiredTitle);
+        return githubClient.updateIssueTitle(
+          expiringIssue.node_id,
+          expiredTitle
+        );
       }
 
       return githubClient.createIssue({ repoId, title: expiredTitle });

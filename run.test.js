@@ -17,7 +17,7 @@ describe("run", () => {
           repoId: "1",
           issues: [
             {
-              id: "1",
+              node_id: "1",
               title: "blackbox key expiring soon: josiah_carberry@brown.edu",
             },
           ],
@@ -60,7 +60,7 @@ describe("run", () => {
           repoId: "1",
           issues: [
             {
-              id: "1",
+              node_id: "1",
               title: "blackbox key has expired: josiah_carberry@brown.edu",
             },
           ],
@@ -102,7 +102,7 @@ describe("run", () => {
           repoId: "1",
           issues: [
             {
-              id: "1",
+              node_id: "1",
               title: "blackbox key expiring soon: josiah_carberry@brown.edu",
             },
           ],
