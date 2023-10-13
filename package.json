@@ -18,10 +18,10 @@
     "gpg": "^0.6.0"
   },
   "devDependencies": {
-    "@zeit/ncc": "^0.22.3",
+    "@vercel/ncc": "^0.38.0",
     "eslint": "^8.48.0",
     "eslint-config-brown": "github:BrownUniversity/eslint-config-brown#0.17",
-    "jest": "^26.6.3",
+    "jest": "^29.7.0",
     "mockdate": "^3.0.2",
     "prettier": "^2.0.5"
   }
